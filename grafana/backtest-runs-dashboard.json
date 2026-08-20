@@ -1,0 +1,173 @@
+{
+  "title": "Quant Research — Backtest Runs",
+  "uid": "quant-research-backtests",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-90d", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "DS_POSTGRES",
+        "type": "datasource",
+        "query": "postgres",
+        "label": "Postgres datasource",
+        "current": {}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Total return % by run — net vs gross (no commission)",
+      "type": "timeseries",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+      "fieldConfig": { "defaults": { "unit": "percent" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+          "rawSql": "SELECT run_at AS \"time\", total_return_pct AS \"net\", spec_name FROM backtest_runs WHERE $__timeFilter(run_at) ORDER BY run_at",
+          "format": "time_series",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+          "rawSql": "SELECT run_at AS \"time\", total_return_pct_gross AS \"gross\", spec_name FROM backtest_runs WHERE $__timeFilter(run_at) ORDER BY run_at",
+          "format": "time_series",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Runs (last 90 days)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 9 },
+      "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+          "rawSql": "SELECT count(*) FROM backtest_runs WHERE $__timeFilter(run_at)",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Avg win rate %",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 9 },
+      "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+      "fieldConfig": { "defaults": { "unit": "percent" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+          "rawSql": "SELECT avg(win_rate_pct) FROM backtest_runs WHERE $__timeFilter(run_at)",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Avg Sharpe",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 9 },
+      "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+          "rawSql": "SELECT avg(sharpe) FROM backtest_runs WHERE $__timeFilter(run_at)",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Worst max drawdown %",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 9 },
+      "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+      "fieldConfig": { "defaults": { "unit": "percent" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+          "rawSql": "SELECT min(max_drawdown_pct) FROM backtest_runs WHERE $__timeFilter(run_at)",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Avg commission drag (gross − net)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 13 },
+      "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+      "description": "How much of the gross edge commission ate on average across runs in the selected window.",
+      "fieldConfig": { "defaults": { "unit": "percent" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+          "rawSql": "SELECT avg(total_return_pct_gross - total_return_pct) FROM backtest_runs WHERE $__timeFilter(run_at)",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Recent runs",
+      "type": "table",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 17 },
+      "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+          "rawSql": "SELECT run_at, spec_name, universe, num_trades, total_return_pct, total_return_pct_gross, cagr_pct, cagr_pct_gross, max_drawdown_pct, sharpe, win_rate_pct FROM backtest_runs ORDER BY run_at DESC LIMIT 100",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Strategy leaderboard (ranked by Sharpe, min 15 trades)",
+      "type": "table",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 27 },
+      "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+      "description": "One row per strategy name — latest known backtest performance, not raw run history. See scripts/promote_to_live.py to export a row for live use.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "status"},
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {"type": "value", "options": {
+                    "candidate": {"text": "candidate", "color": "text"},
+                    "promoted_to_live": {"text": "🔴 promoted_to_live", "color": "red"},
+                    "retired": {"text": "retired", "color": "text"}
+                  }}
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+          "rawSql": "SELECT name, direction, universe, num_trades, total_return_pct, total_return_pct_gross, cagr_pct, cagr_pct_gross, sharpe, win_rate_pct, max_drawdown_pct, status, updated_at FROM strategies WHERE num_trades >= 15 ORDER BY sharpe DESC NULLS LAST",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}
